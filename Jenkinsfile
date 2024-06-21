@@ -4,72 +4,74 @@ pipeline {
             label 'AGENT-1'
         }
     }
-    environment {
-        GREETING = 'Hello Jenkins'
-    }
     options {
-        timeout(time: 1, unit: 'HOURS')
-        disableConcurrentBuilds()
+        ansiColor('xterm')
+        // timeout(time: 1, unit: 'HOURS')
+        // disableConcurrentBuilds()
     }
-        parameters {
-        string(name: 'PERSON', defaultValue: 'Mr Jenkins', description: 'Who should I say hello to?')
-
-        text(name: 'BIOGRAPHY', defaultValue: '', description: 'Enter some information about the person')
-
-        booleanParam(name: 'TOGGLE', defaultValue: true, description: 'Toggle this value')
-
-        choice(name: 'CHOICE', choices: ['One', 'Two', 'Three'], description: 'Pick something')
-
-        password(name: 'PASSWORD', defaultValue: 'SECRET', description: 'Enter a password')
-    }
-
-    // build
+     // build
     stages {
-        stage('Build') {
-            steps {
-                echo 'Building..'
-            }
-        }
-         stage('Test') {
-            steps {
-                echo 'Testing..'
-            }
-        }
-          stage('Deploy') {
+        stage('vpc') {
             steps {
                 sh """
-                  echo "Here I wrote shell script"
-                 echo "$GREETING"
-                 #sleep 10
-                 """
-            }
-        }
-        stage ('check params'){
-            steps{
-                sh """
-                echo "Hello ${params.PERSON}"
-
-                echo "Biography: ${params.BIOGRAPHY}"
-
-                echo "Toggle: ${params.TOGGLE}"
-
-                echo "Choice: ${params.CHOICE}"
-
-                echo "Password: ${params.PASSWORD}"
+                    cd 01-vpc
+                    terraform init -reconfigure
+                    terraform apply -auto-approve
                 """
             }
         }
+
+          stage('SG') {
+            steps {
+                sh """
+                    cd 02-sg
+                    terraform init -reconfigure
+                    terraform apply -auto-approve
+                """
+            }
+        }
+          stage('vpn') {
+            steps {
+                sh """
+                    cd 03-vpn
+                    terraform init -reconfigure
+                    terraform apply -auto-approve
+                """
+            }
+        }
+        stage('DB ALB') {
+            parallel {
+                stage('DB') {
+                    steps {
+                      sh """
+                       cd 04-databases
+                       terraform init -reconfigure
+                       terraform apply -auto-approve
+                """
+                }
+           }
+                 stage('APP ALB') {
+                    steps {
+                      sh """
+                       cd 05-app-alb
+                       terraform init -reconfigure
+                       terraform apply -auto-approve
+                """
+                }
+           }
+        }
     }
+                
     // post build
-    post {
-        always {
-            echo 'I will always say hello again'
+    post { 
+        always { 
+            echo 'I will always say Hello again!'
         }
-        failure {
-            echo 'This runs when pipe;line is failed,used generally to send some alerts'
+        failure { 
+            echo 'this runs when pipeline is failed, used generally to send some alerts'
         }
-        success {
-            echo 'I will say Hello when pipeline is success '
+        success{
+            echo 'I will say Hello when pipeline is success'
         }
     }
 }
