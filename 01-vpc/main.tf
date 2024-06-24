@@ -1,4 +1,4 @@
-module "robosho" {
+module "roboshop" {
   #source = "../terraform-aws-vpc"
   source = "git::https://github.com/daws-76s/terraform-aws-vpc.git?ref=main"
   project_name = var.project_name
